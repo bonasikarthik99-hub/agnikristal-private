@@ -1,0 +1,310 @@
+agnikristal_full.py
+
+
+import streamlit as st
+import numpy as np
+import pandas as pd
+import os
+import joblib
+import xgboost as xgb
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import classification_report, confusion_matrix
+from rdkit import Chem
+from rdkit.Chem import Descriptors, rdMolDescriptors, Draw
+import plotly.graph_objects as go
+from PIL import Image
+import io
+
+# ---------------------------------------------------
+# PAGE CONFIG
+# ---------------------------------------------------
+
+st.set_page_config(
+    page_title="🔥 AgniKristal - Cocrystal Predictor",
+    page_icon="🔥",
+    layout="wide"
+)
+
+# ---------------------------------------------------
+# DESCRIPTOR FUNCTIONS
+# ---------------------------------------------------
+
+def validate_smiles(smiles):
+    mol = Chem.MolFromSmiles(smiles)
+    return mol is not None, mol
+
+def calculate_descriptors(mol, prefix=""):
+    desc = {}
+    for name, func in Descriptors.descList:
+        try:
+            desc[f"{prefix}_{name}"] = func(mol)
+        except:
+            desc[f"{prefix}_{name}"] = 0
+    return desc
+
+def calculate_all_descriptors(api, co, solv):
+    all_desc = {}
+
+    valid_api, api_mol = validate_smiles(api)
+    valid_co, co_mol = validate_smiles(co)
+    valid_solv, solv_mol = validate_smiles(solv)
+
+    if not (valid_api and valid_co and valid_solv):
+        return {}, False
+
+    all_desc.update(calculate_descriptors(api_mol, "API"))
+    all_desc.update(calculate_descriptors(co_mol, "Coformer"))
+    all_desc.update(calculate_descriptors(solv_mol, "Solvent"))
+
+    return all_desc, True
+
+def smiles_to_image(smiles):
+    mol = Chem.MolFromSmiles(smiles)
+    if mol:
+        img = Draw.MolToImage(mol, size=(300,200))
+        return img
+    return None
+
+# ---------------------------------------------------
+# CHEMISTRY FEATURES
+# ---------------------------------------------------
+
+def calculate_chemistry_features(desc):
+
+    api_hbd = desc.get("API_NumHDonors", 0)
+    api_hba = desc.get("API_NumHAcceptors", 0)
+    co_hbd = desc.get("Coformer_NumHDonors", 0)
+    co_hba = desc.get("Coformer_NumHAcceptors", 0)
+
+    api_logp = desc.get("API_MolLogP", 0)
+    co_logp = desc.get("Coformer_MolLogP", 0)
+
+    api_tpsa = desc.get("API_TPSA", 0)
+    co_tpsa = desc.get("Coformer_TPSA", 0)
+
+    delta_pka_proxy = abs((api_hbd - api_hba) - (co_hbd - co_hba))
+    hbond_score = min(api_hbd, co_hba) + min(api_hba, co_hbd)
+
+    polarity_diff = abs(api_tpsa - co_tpsa)
+    logp_diff = abs(api_logp - co_logp)
+
+    interaction_energy_proxy = (1/(1+polarity_diff)) + (1/(1+logp_diff))
+
+    return {
+        "delta_pka_proxy": delta_pka_proxy,
+        "hbond_complementarity": hbond_score,
+        "interaction_energy_proxy": interaction_energy_proxy
+    }
+
+# ---------------------------------------------------
+# CONDITION SCORE
+# ---------------------------------------------------
+
+def condition_score(temp, stir, time, cooling):
+
+    score = (
+        (1 - abs(temp - 40)/60)*0.3 +
+        min(stir/500,1)*0.2 +
+        min(time/24,1)*0.2 +
+        (1-min(cooling/5,1))*0.15 +
+        0.15
+    )
+
+    return min(score,1)
+
+# ---------------------------------------------------
+# RULE BASED LABEL
+# ---------------------------------------------------
+
+def rule_based_label(chem, temp, cooling):
+
+    score = 0
+
+    if chem["hbond_complementarity"] >= 2:
+        score += 2
+
+    if 0 <= chem["delta_pka_proxy"] <= 3:
+        score += 1
+
+    if chem["interaction_energy_proxy"] > 0.5:
+        score += 1
+
+    if 30 <= temp <= 50:
+        score += 1
+
+    if cooling < 2:
+        score += 1
+
+    return 1 if score >= 4 else 0
+
+# ---------------------------------------------------
+# TRAIN MODEL
+# ---------------------------------------------------
+
+def train_model():
+
+    features = []
+    labels = []
+
+    dataset_path = "data/cocrystal_dataset.csv"
+
+    if os.path.exists(dataset_path):
+
+        df = pd.read_csv(dataset_path)
+
+        for _, row in df.iterrows():
+
+            desc, valid = calculate_all_descriptors(
+                row["api_smiles"],
+                row["coformer_smiles"],
+                row["solvent_smiles"]
+            )
+
+            if valid:
+                chem = calculate_chemistry_features(desc)
+                vector = []
+
+                for k in sorted(desc.keys()):
+                    vector.append(desc[k])
+
+                for k in sorted(chem.keys()):
+                    vector.append(chem[k])
+
+                features.append(vector)
+                labels.append(row["label"])
+
+    else:
+        # synthetic fallback
+        examples = [
+            ("CC(=O)OC1=CC=CC=C1C(=O)O", "C1=CC(=CN=C1)C(=O)N", "CCO"),
+            ("CC(C)CC1=CC=C(C=C1)C(C)C(=O)O", "C1=CC=C(C=C1)C(=O)O", "CO")
+        ]
+
+        for api, co, solv in examples * 300:
+
+            desc, valid = calculate_all_descriptors(api, co, solv)
+
+            if valid:
+                chem = calculate_chemistry_features(desc)
+                vector = []
+
+                for k in sorted(desc.keys()):
+                    vector.append(desc[k])
+
+                for k in sorted(chem.keys()):
+                    vector.append(chem[k])
+
+                features.append(vector)
+                labels.append(rule_based_label(chem, 40, 1))
+
+    X = np.array(features)
+    y = np.array(labels)
+
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    model = xgb.XGBClassifier(
+        n_estimators=200,
+        max_depth=6,
+        learning_rate=0.05,
+        eval_metric="logloss"
+    )
+
+    model.fit(X_scaled, y)
+
+    os.makedirs("models", exist_ok=True)
+    joblib.dump(model, "models/model.pkl")
+    joblib.dump(scaler, "models/scaler.pkl")
+
+    return model, scaler
+
+# ---------------------------------------------------
+# LOAD OR TRAIN
+# ---------------------------------------------------
+
+if os.path.exists("models/model.pkl"):
+    model = joblib.load("models/model.pkl")
+    scaler = joblib.load("models/scaler.pkl")
+else:
+    model, scaler = train_model()
+
+# ---------------------------------------------------
+# UI
+# ---------------------------------------------------
+
+st.markdown("## 🔥 AgniKristal - AI Cocrystal Predictor")
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    api = st.text_area("API SMILES")
+    if api:
+        img = smiles_to_image(api)
+        if img:
+            st.image(img)
+
+with col2:
+    co = st.text_area("Coformer SMILES")
+    if co:
+        img = smiles_to_image(co)
+        if img:
+            st.image(img)
+
+with col3:
+    solv = st.text_area("Solvent SMILES")
+    if solv:
+        img = smiles_to_image(solv)
+        if img:
+            st.image(img)
+
+st.markdown("---")
+
+c1, c2, c3, c4 = st.columns(4)
+
+with c1:
+    temp = st.slider("Temperature °C", 0,100,40)
+
+with c2:
+    stir = st.slider("Stirring rpm",0,1000,400)
+
+with c3:
+    time = st.slider("Time (h)",1,72,24)
+
+with c4:
+    cooling = st.slider("Cooling Rate",0.1,5.0,1.0)
+
+if st.button("🔥 Predict"):
+
+    desc, valid = calculate_all_descriptors(api,co,solv)
+
+    if valid:
+
+        chem = calculate_chemistry_features(desc)
+        vector = []
+
+        for k in sorted(desc.keys()):
+            vector.append(desc[k])
+
+        for k in sorted(chem.keys()):
+            vector.append(chem[k])
+
+        X = scaler.transform([vector])
+        prob = model.predict_proba(X)[0][1]
+
+        st.markdown(f"### Prediction Probability: {prob:.2%}")
+
+        fig = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=prob*100,
+            gauge={'axis': {'range':[0,100]}}
+        ))
+
+        st.plotly_chart(fig)
+
+        cond_score = condition_score(temp,stir,time,cooling)
+        st.markdown(f"### 🔥 Condition Optimality: {cond_score:.2%}")
+
+    else:
+        st.error("Invalid SMILES")
+
