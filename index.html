@@ -1,96 +1,65 @@
 <!DOCTYPE html>
-<<<<<<< HEAD
+
 <html>
 
 <head>
 
 <title>AgniKristal</title>
 
-<link rel="icon" type="image/png" href="images/logo.png">
-
-</head>
-
-<body style="font-family: Arial; text-align:center; margin-top:50px;">
-
-<h1>AgniKristal</h1>
-
-<img src="images/logo.png" width="250">
-
-<p>
-AgniKristal is a computational platform for screening
-API–coformer combinations in pharmaceutical crystal engineering.
-</p>
-
-</body>
-
-</html>
-=======
-
-<html>
-
-<head>
-<title>AgniKristal</title>
-
-<meta name="description" content="AgniKristal is an AI-assisted pharmaceutical co-crystal screening platform for crystal engineering and API–coformer interaction prediction.">
+<link rel="icon" type="image/png" href="./logo.png">
 
 <style>
 
 body{
-font-family: Arial;
-background:#f4f6f8;
-text-align:center;
+font-family: Arial, sans-serif;
 margin:0;
+background:#f5f6fa;
+text-align:center;
 }
 
-header{
-background:#0b3d91;
-color:white;
+.header{
 padding:40px;
 }
 
-h1{
-margin:0;
+.header img{
+margin-top:20px;
+}
+
+.hero{
+background:#1f4aa8;
+color:white;
+padding:60px 20px;
 }
 
 .section{
 background:white;
-padding:40px;
-margin:40px auto;
 width:70%;
+margin:40px auto;
+padding:40px;
 border-radius:10px;
-box-shadow:0 4px 10px rgba(0,0,0,0.1);
-}
-
-.features{
-display:flex;
-justify-content:center;
-gap:30px;
-flex-wrap:wrap;
-}
-
-.card{
-background:#ffffff;
-padding:20px;
-width:220px;
-border-radius:8px;
-box-shadow:0 3px 8px rgba(0,0,0,0.1);
+box-shadow:0 10px 20px rgba(0,0,0,0.1);
 }
 
 button{
-padding:14px 28px;
-background:#ff6a00;
+background:#1f4aa8;
 color:white;
+padding:15px 30px;
+font-size:16px;
 border:none;
 border-radius:6px;
-font-size:16px;
 cursor:pointer;
 }
 
-footer{
-background:#222;
-color:white;
-padding:20px;
-margin-top:40px;
+button:hover{
+background:#16397f;
+}
+
+.features{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:20px;
+text-align:left;
+margin-top:20px;
 }
 
 </style>
@@ -99,22 +68,36 @@ margin-top:40px;
 
 <body>
 
-<header>
+<div class="header">
 
 <h1>AgniKristal</h1>
-<p>AI-Assisted Pharmaceutical Co-Crystal Screening Platform</p>
 
-</header>
+<img src="./logo.png" width="220" alt="AgniKristal Logo">
+
+<p>
+AgniKristal is a computational platform for screening
+API–coformer combinations in pharmaceutical crystal engineering.
+</p>
+
+</div>
+
+<div class="hero">
+
+<h1>AgniKristal</h1>
+
+<h3>AI-Assisted Pharmaceutical Co-Crystal Screening Platform</h3>
+
+</div>
 
 <div class="section">
 
 <h2>About</h2>
 
 <p>
-AgniKristal is a computational platform developed for screening
-API–coformer combinations in pharmaceutical crystal engineering.
-It integrates ΔpKa prediction, hydrogen-bond interaction analysis,
-synthon scoring, and 3D molecular visualization.
+AgniKristal is a computational platform developed for screening API–coformer
+combinations in pharmaceutical crystal engineering. It integrates ΔpKa
+prediction, hydrogen-bond interaction analysis, synthon scoring, and
+molecular visualization.
 </p>
 
 </div>
@@ -125,25 +108,12 @@ synthon scoring, and 3D molecular visualization.
 
 <div class="features">
 
-<div class="card">
-<h3>ΔpKa Prediction</h3>
-<p>Predict proton transfer likelihood between API and coformer.</p>
-</div>
-
-<div class="card">
-<h3>Synthon Analysis</h3>
-<p>Identify hydrogen-bonding synthons in crystal structures.</p>
-</div>
-
-<div class="card">
-<h3>3D Visualization</h3>
-<p>Interactive molecular visualization of API-coformer pairs.</p>
-</div>
-
-<div class="card">
-<h3>Automated Reports</h3>
-<p>Generate PDF screening reports with scoring results.</p>
-</div>
+<div>✔ Co-crystal screening</div>
+<div>✔ Hydrogen-bond synthon detection</div>
+<div>✔ API-coformer interaction analysis</div>
+<div>✔ Probability scoring algorithm</div>
+<div>✔ Molecular visualization</div>
+<div>✔ Research-grade computational workflow</div>
 
 </div>
 
@@ -151,39 +121,16 @@ synthon scoring, and 3D molecular visualization.
 
 <div class="section">
 
-<h2>Download Software</h2>
+<h2>Download</h2>
 
-<p>Download AgniKristal desktop application.</p>
+<p>Download the AgniKristal desktop application.</p>
 
-<a href="https://github.com/bonasikarthik99-hub/agnikristal-private">
-
-<button>Download from GitHub</button>
-
+<a href="./dist/AgniKristal.exe" download>
+<button>Download AgniKristal</button>
 </a>
 
 </div>
-
-<div class="section">
-
-<h2>Source Code</h2>
-
-<p>View the project repository on GitHub.</p>
-
-<a href="https://github.com/bonasikarthik99-hub/agnikristal-private">
-
-<button>View Source</button>
-
-</a>
-
-</div>
-
-<footer>
-
-<p>Developed by Rambabu</p>
-
-</footer>
 
 </body>
 
 </html>
->>>>>>> 8948f74a426390fb5764e7ada679f3be770943cd
