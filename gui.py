@@ -309,4 +309,269 @@ interaction_button = ttk.Button(
 interaction_button.pack(pady=5)
 
 
+# =========================
+# PROCESS ALTERNATIVES (DAPAGLIFLOZIN)
+# =========================
+
+def open_process_alternatives():
+
+    from core.process_alternatives import (
+        get_alternatives, list_steps, DISCLAIMER
+    )
+
+    win = tk.Toplevel(root)
+    win.title("Dapagliflozin Process Alternatives")
+    win.geometry("1100x480")
+
+    top = ttk.Frame(win)
+    top.pack(fill="x", padx=10, pady=8)
+
+    ttk.Label(top, text="Step:").pack(side="left")
+
+    step_var = tk.StringVar(value="All")
+    step_box = ttk.Combobox(
+        top,
+        textvariable=step_var,
+        values=["All"] + list_steps(),
+        state="readonly",
+        width=40
+    )
+    step_box.pack(side="left", padx=5)
+
+    columns = ("reagent", "conditions", "pros", "cons", "maturity", "cost", "likelihood")
+    headings = ("Reagent / option", "Conditions", "Pros", "Cons", "Maturity", "Cost vs baseline", "Likelihood (heuristic)")
+    widths = (240, 170, 200, 200, 100, 100, 110)
+
+    tree = ttk.Treeview(win, columns=columns, show="headings", height=14)
+    for col, head, width in zip(columns, headings, widths):
+        tree.heading(col, text=head)
+        tree.column(col, width=width, anchor="w")
+    tree.pack(fill="both", expand=True, padx=10, pady=5)
+
+    def refresh(*_):
+        tree.delete(*tree.get_children())
+        step = None if step_var.get() == "All" else step_var.get()
+        for row in get_alternatives(step=step):
+            tree.insert("", tk.END, values=tuple(row[c] for c in columns))
+
+    step_box.bind("<<ComboboxSelected>>", refresh)
+    refresh()
+
+    ttk.Label(win, text=DISCLAIMER, wraplength=1050).pack(pady=6)
+
+
+process_button = ttk.Button(
+    root,
+    text="Case Study: Dapagliflozin Process Alternatives",
+    command=open_process_alternatives
+)
+process_button.pack(pady=5)
+
+
+# =========================
+# COMPANY EXPERIMENTAL DATA ANALYSIS
+# =========================
+
+def open_experimental_analysis():
+
+    from tkinter import filedialog
+    from core.experimental_data import (
+        load_experiments, rank_routes, best_of_all
+    )
+
+    path = filedialog.askopenfilename(
+        title="Select experimental data (CSV or Excel)",
+        filetypes=[("Data files", "*.csv *.xlsx *.xls"), ("All files", "*.*")]
+    )
+    if not path:
+        return
+
+    try:
+        df = load_experiments(path)
+        ranked = rank_routes(df)
+        best = best_of_all(df)
+    except Exception as e:
+        messagebox.showerror("Data Error", str(e))
+        return
+
+    win = tk.Toplevel(root)
+    win.title("Route Ranking - Company Experimental Data")
+    win.geometry("1150x600")
+
+    for warning in df.attrs.get("warnings", []):
+        ttk.Label(win, text=warning, foreground="#b00020").pack(anchor="w", padx=10)
+
+    cols = ("company", "route_id", "overall_yield_pct", "cost_usd_per_kg",
+            "p_exact_product", "safety_score", "score")
+    heads = ("Company", "Route", "Overall yield %", "Cost USD/kg",
+             "P(exact product)", "Safety", "Score")
+    tree = ttk.Treeview(win, columns=cols, show="headings", height=10)
+    for c, h in zip(cols, heads):
+        tree.heading(c, text=h)
+        tree.column(c, width=150, anchor="w")
+    tree.pack(fill="x", padx=10, pady=8)
+
+    for _, r in ranked.iterrows():
+        values = []
+        for c in cols:
+            v = r[c]
+            values.append(f"{v:.3f}" if isinstance(v, float) else v)
+        tree.insert("", tk.END, values=values)
+
+    ttk.Label(
+        win,
+        text="Best of all companies (projection - this combination has not been run):",
+        font=("Arial", 11, "bold")
+    ).pack(anchor="w", padx=10, pady=(10, 2))
+
+    box = tk.Text(win, height=14, width=140)
+    box.pack(padx=10, pady=4)
+    for _, s in best["steps"].iterrows():
+        box.insert(
+            tk.END,
+            f"Step {int(s['step_no'])}: {s['step_name']}  <-  "
+            f"{s['company']} ({s['reagents']}, {s['solvent']}, {s['temp_c']} C)  "
+            f"yield {s['yield_pct']}%\n"
+        )
+    p = best["projected_p_exact_product"]
+    box.insert(
+        tk.END,
+        f"\nProjected overall yield: {best['projected_overall_yield_pct']}%   "
+        f"Projected P(exact product): "
+        f"{'n/a (missing replicate data)' if p != p else f'{p:.2f}'}\n"
+    )
+    for note in best["notes"]:
+        box.insert(tk.END, "NOTE: " + note + "\n")
+
+
+experimental_button = ttk.Button(
+    root,
+    text="Analyze Company Experimental Data",
+    command=open_experimental_analysis
+)
+experimental_button.pack(pady=5)
+
+
+# =========================
+# 3D STRUCTURE + EXACT-PRODUCT CHECK
+# =========================
+
+def open_3d_structure():
+
+    import webbrowser
+    from tkinter import filedialog
+
+    smiles = api_entry.get().strip()
+
+    try:
+        from core import molecule3d
+    except ImportError:
+        messagebox.showerror(
+            "RDKit missing",
+            "Install RDKit first:  pip install rdkit matplotlib"
+        )
+        return
+
+    if not smiles:
+        smiles = molecule3d.DAPAGLIFLOZIN_SMILES
+
+    from tkinter import simpledialog
+    reference = simpledialog.askstring(
+        "Target drug",
+        "Reference SMILES of the target drug (with stereochemistry).\n"
+        "Leave as is to check against dapagliflozin:",
+        initialvalue=molecule3d.DAPAGLIFLOZIN_SMILES,
+        parent=root
+    )
+    if not reference:
+        return
+
+    try:
+        check = molecule3d.verify_product(smiles, reference_smiles=reference)
+        folder = filedialog.askdirectory(title="Choose folder to save 3D files")
+        if not folder:
+            return
+        html_target = os.path.join(folder, "agnikristal_3d_viewer.html")
+        try:
+            html_path = molecule3d.export_anomer_comparison_html(html_target, smiles)
+        except ValueError:
+            # not a C-aryl glycoside: single structure, no alpha/beta partner
+            html_path = molecule3d.export_3d_html(html_target, smiles, label="Structure")
+        png_path = molecule3d.export_3d_png(
+            os.path.join(folder, "agnikristal_3d_structure.png"), smiles
+        )
+    except Exception as e:
+        messagebox.showerror("3D Error", str(e))
+        return
+
+    messagebox.showinfo(
+        "Exact product check",
+        f"Verdict: {check['verdict']}\n"
+        f"Formula: {check['formula']} (matches: {check['formula_matches']})\n"
+        f"MW: {check['molecular_weight']}\n\n"
+        f"Saved:\n{html_path}\n{png_path}"
+    )
+    webbrowser.open("file://" + os.path.abspath(html_path))
+
+
+structure_button = ttk.Button(
+    root,
+    text="3D Structure + Exact-Product Check",
+    command=open_3d_structure
+)
+structure_button.pack(pady=5)
+
+
+# =========================
+# ALTERNATIVE REAGENTS / SOLVENTS (ANY DRUG)
+# =========================
+
+def open_substitutions():
+
+    from core.substitutions import lookup_table
+
+    win = tk.Toplevel(root)
+    win.title("Alternative Reagents and Solvents (any drug)")
+    win.geometry("1100x520")
+
+    ttk.Label(
+        win,
+        text="Reagents / solvents / steps (e.g. n-BuLi, DCM, LiAlH4, DMF, column chromatography):"
+    ).pack(anchor="w", padx=10, pady=(10, 2))
+
+    entry = ttk.Entry(win, width=100)
+    entry.pack(padx=10, pady=4)
+
+    cols = ("Found", "Alternative", "How it helps", "Cost vs original", "Maturity", "Re-check")
+    tree = ttk.Treeview(win, columns=cols, show="headings", height=16)
+    for c in cols:
+        tree.heading(c, text=c)
+        tree.column(c, width=170, anchor="w")
+    tree.pack(fill="both", expand=True, padx=10, pady=8)
+
+    def search():
+        tree.delete(*tree.get_children())
+        table = lookup_table(entry.get())
+        if table.empty:
+            messagebox.showinfo("No match", "Nothing in the knowledge base matches that text yet.")
+            return
+        for _, r in table.iterrows():
+            tree.insert("", tk.END, values=tuple(r[c] for c in cols))
+
+    ttk.Button(win, text="Find alternatives", command=search).pack(pady=4)
+    entry.bind("<Return>", lambda e: search())
+    ttk.Label(
+        win,
+        text="Literature-level guidance; confirm each swap experimentally for your drug."
+    ).pack(pady=4)
+
+
+substitution_button = ttk.Button(
+    root,
+    text="Alternative Reagents / Solvents (any drug)",
+    command=open_substitutions
+)
+substitution_button.pack(pady=5)
+
+
 root.mainloop()
