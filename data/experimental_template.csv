@@ -1,0 +1,12 @@
+company,route_id,step_no,step_name,reagents,solvent,temp_c,time_h,yield_pct,purity_pct,alpha_anomer_pct,n_runs,n_runs_in_spec,scale_kg,step_cost_usd_per_kg,hazards,source,is_demo
+DEMO_CO_A (fictional),A1,1,aryl_metalation_glycosylation,n-BuLi,toluene/THF,-78,3,72,,,5,4,1.0,900,"pyrophoric,cryogenic",demo,true
+DEMO_CO_A (fictional),A1,2,glycoside_formation,MsOH/MeOH,MeOH,30,4,88,,,5,5,1.0,120,,demo,true
+DEMO_CO_A (fictional),A1,3,reduction,Et3SiH/BF3.OEt2,MeCN/DCM,-10,2,70,94.0,4.5,5,2,1.0,600,"corrosive,chlorinated_solvent",demo,true
+DEMO_CO_A (fictional),A1,4,purification,acetylation/recrystallization,EtOAc/heptane,25,12,65,99.2,0.3,5,3,1.0,300,,demo,true
+DEMO_CO_B (fictional),B1,1,aryl_metalation_glycosylation,iPrMgCl.LiCl,THF,-10,4,78,,,4,3,1.0,520,,demo,true
+DEMO_CO_B (fictional),B1,2,glycoside_formation,MsOH/EtOH,EtOH,30,4,85,,,4,4,1.0,110,,demo,true
+DEMO_CO_B (fictional),B1,3,reduction,Et3SiH/AlCl3,MeCN/DCM,0,3,74,95.5,3.0,4,3,1.0,350,"chlorinated_solvent",demo,true
+DEMO_CO_B (fictional),B1,4,purification,DL-proline co-crystal,EtOAc,80,3,82,99.7,0.05,4,4,1.0,260,,demo,true
+DEMO_CO_C (fictional),C1,1,aryl_metalation_glycosylation,n-BuLi (flow),THF,-15,0.1,80,,,3,3,1.0,700,"pyrophoric",demo,true
+DEMO_CO_C (fictional),C1,2,glycoside_formation,MsOH/MeOH,MeOH,30,4,90,,,3,3,1.0,115,,demo,true
+DEMO_CO_C (fictional),C1,3,reduction,Et3SiH/BF3.OEt2,MeCN/DCM,-10,2,76,96.0,2.5,3,2,1.0,600,"corrosive,chlorinated_solvent",demo,true
